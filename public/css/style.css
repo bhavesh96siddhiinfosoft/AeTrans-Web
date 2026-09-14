@@ -1,0 +1,1724 @@
+/*
+ * Aetranse ID — customer website stylesheet.
+ *
+ * HAND-WRITTEN, AND THERE IS NO BUILD STEP. No Tailwind, no Vite, no npm: editing
+ * this file is the whole pipeline, exactly as on the admin panel. Do not reintroduce
+ * a compiler — the panel removed one deliberately on 2026-08-18 and this project was
+ * set up without one on purpose.
+ *
+ * No inline `style="…"` in the views either. Styling is named classes, here.
+ *
+ * The tokens below are the panel's, so the two products read as one. This is a
+ * STARTING POINT for the auth screens, not the site's finished design — the real
+ * visual direction is still to come (see docs/website-spec.md §11 in the panel repo).
+ *
+ * THEMES: `:root` carries the complete light palette. The dark block redefines only
+ * tokens, so no component rule ever lives inside a media query — a colour defined
+ * only under `prefers-color-scheme` never applies when the attribute is stamped.
+ */
+
+:root {
+    color-scheme: light;
+
+    --accent: #FF6B11;
+    --accent-hover: #E85F0A;
+    --accent-soft: #FFF1E6;
+
+    --bg-page: #F8F8F6;
+    --bg-card: #FFFFFF;
+    --bg-subtle: #FAFAF9;
+    --bg-hover: #F5F5F4;
+
+    --border: #E7E5E4;
+    --border-strong: #D6D3D1;
+
+    --text-primary: #1C1917;
+    --text-secondary: #57534E;
+    --text-muted: #8A8683;
+
+    --danger: #DC2626;
+    --danger-bg: #FEF2F2;
+    --danger-border: #FCA5A5;
+
+    --success: #15803D;
+    --success-bg: #F0FDF4;
+    --success-border: #BBF7D0;
+
+    /* Amber, for a day that can still be sold but is nearly gone. A third state is
+       the whole point of the booking calendar: green and red alone cannot say
+       "hurry", and a customer who cannot see scarcity has no reason to decide. */
+    --warning: #B45309;
+    --warning-bg: #FFFBEB;
+    --warning-border: #FCD34D;
+
+    --radius-field: 10px;
+    --radius-card: 14px;
+
+    --shadow-card: 0 8px 24px rgba(0, 0, 0, .06);
+}
+
+@media (prefers-color-scheme: dark) {
+    /* Guarded, so an explicit light choice still beats a dark operating system. */
+    :root:not([data-theme="light"]) {
+        color-scheme: dark;
+
+        --accent: #FF7A28;
+        --accent-hover: #FF8B45;
+        --accent-soft: #2A1B10;
+
+        --bg-page: #171512;
+        --bg-card: #1C1A17;
+        --bg-subtle: #201D19;
+        --bg-hover: #262220;
+
+        --border: #322D27;
+        --border-strong: #443D35;
+
+        --text-primary: #F5F3F0;
+        --text-secondary: #BDB6AD;
+        --text-muted: #8C857C;
+
+        --danger: #F87171;
+        --danger-bg: #2A1514;
+        --danger-border: #7F2A2A;
+
+        --success: #4ADE80;
+        --success-bg: #13251A;
+        --success-border: #1F5133;
+
+        --warning: #FBBF24;
+        --warning-bg: #2A2113;
+        --warning-border: #6B4E12;
+
+        --shadow-card: 0 8px 24px rgba(0, 0, 0, .4);
+    }
+}
+
+/* Stamped by the toggle, so an explicit dark choice wins on a light system too. */
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    --accent: #FF7A28;
+    --accent-hover: #FF8B45;
+    --accent-soft: #2A1B10;
+
+    --bg-page: #171512;
+    --bg-card: #1C1A17;
+    --bg-subtle: #201D19;
+    --bg-hover: #262220;
+
+    --border: #322D27;
+    --border-strong: #443D35;
+
+    --text-primary: #F5F3F0;
+    --text-secondary: #BDB6AD;
+    --text-muted: #8C857C;
+
+    --danger: #F87171;
+    --danger-bg: #2A1514;
+    --danger-border: #7F2A2A;
+
+    --success: #4ADE80;
+    --success-bg: #13251A;
+    --success-border: #1F5133;
+
+    --warning: #FBBF24;
+    --warning-bg: #2A2113;
+    --warning-border: #6B4E12;
+
+    --shadow-card: 0 8px 24px rgba(0, 0, 0, .4);
+}
+
+/* ------------------------------------------------------------------ *
+ * Reset and base
+ * ------------------------------------------------------------------ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    /* An explicit background: the page is composited over a ground we do not own,
+       and a transparent body borrows the host's theme instead of its own. */
+    background: var(--bg-page);
+    color: var(--text-primary);
+    font-family: Figtree, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+                 "Helvetica Neue", Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, p, figure { margin: 0; }
+h1, h2, h3 { line-height: 1.25; text-wrap: balance; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.hidden { display: none !important; }
+.text-muted { color: var(--text-muted); }
+.text-sm { font-size: 12.5px; }
+
+/* Layout does the spacing — gap on a container, not margins on each child. */
+.stack { display: flex; flex-direction: column; gap: 18px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row.is-between { justify-content: space-between; }
+.row.is-end { justify-content: flex-end; }
+.row.is-wrap { flex-wrap: wrap; }
+
+/* ------------------------------------------------------------------ *
+ * Brand — the admin's logo, wherever it appears
+ * ------------------------------------------------------------------ */
+
+.brand { display: inline-flex; align-items: center; gap: 12px; }
+.brand:hover { text-decoration: none; }
+
+/* A height, never a width: the admin uploads whatever shape they have, and a fixed
+   width would squash a wordmark or blow up a square one. */
+.brand-logo { height: 38px; width: auto; max-width: 220px; object-fit: contain; display: block; }
+.brand-footer .brand-logo { height: 34px; }
+.auth-shell .brand-logo { height: 46px; }
+
+/* No logo uploaded — the name in words is a brand too, and better than a gap. */
+.brand-name { font-size: 19px; font-weight: 700; letter-spacing: -.02em; color: var(--text-primary); }
+
+/* Light/dark marks: BOTH are in the markup and CSS picks one, so the swap survives a
+   theme change with no script and no flash. Rendered only when the admin uploaded a
+   separate dark logo — with one file, `.brand-logo-light` is absent and nothing hides. */
+.brand-logo-dark { display: none; }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .brand-logo-light { display: none; }
+    :root:not([data-theme="light"]) .brand-logo-dark { display: block; }
+}
+
+:root[data-theme="dark"] .brand-logo-light { display: none; }
+:root[data-theme="dark"] .brand-logo-dark { display: block; }
+:root[data-theme="light"] .brand-logo-light { display: block; }
+:root[data-theme="light"] .brand-logo-dark { display: none; }
+
+/* ------------------------------------------------------------------ *
+ * Language switcher
+ * ------------------------------------------------------------------ */
+
+.lang { position: relative; }
+
+/* Off-screen rather than `display: none`, so the label stays operable from the
+   keyboard — a hidden input cannot be focused. Same pattern as the site menu, and for
+   the same reason: browsers disagree about a closed <details>. */
+.lang-input {
+    position: absolute; width: 1px; height: 1px; margin: -1px;
+    padding: 0; border: 0; overflow: hidden; clip-path: inset(50%);
+}
+.lang-input:focus-visible + .lang-toggle { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.lang-toggle {
+    display: inline-flex; align-items: center; gap: 7px;
+    height: 36px; padding: 0 10px;
+    border: 1px solid var(--border); border-radius: var(--radius-field);
+    background: var(--bg-card); color: var(--text-secondary);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.lang-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* A fixed box for the flag, so a slow image cannot shove the header sideways as it
+   arrives — the no-layout-shift rule in the spec applies to 20px pictures too. */
+.lang-flag { width: 20px; height: 14px; object-fit: cover; border-radius: 2px; flex: none; }
+
+.lang-panel {
+    display: none;
+    position: absolute; inset-inline-end: 0; top: calc(100% + 8px); z-index: 30;
+    min-width: 180px; padding: 6px;
+    flex-direction: column;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+}
+
+.lang-input:checked ~ .lang-panel { display: flex; }
+
+.lang-panel form { display: contents; }
+
+/* A button, because switching language is a POST — stripped back to look like the menu
+   item it is rather than like a form control. */
+.lang-option {
+    display: flex; align-items: center; gap: 10px; width: 100%;
+    padding: 8px 10px; border: 0; border-radius: 8px;
+    background: none; color: var(--text-secondary);
+    font-family: inherit; font-size: 13.5px; text-align: start; white-space: nowrap;
+    cursor: pointer;
+}
+.lang-option:hover { background: var(--bg-hover); color: var(--text-primary); }
+.lang-option.is-active { color: var(--text-primary); font-weight: 600; }
+
+/* ------------------------------------------------------------------ *
+ * Theme switch
+ * ------------------------------------------------------------------ */
+
+.theme-toggle {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 36px; height: 36px; flex: none;
+    border: 1px solid var(--border); border-radius: var(--radius-field);
+    background: var(--bg-card); color: var(--text-secondary);
+    cursor: pointer; transition: .15s;
+}
+.theme-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* The icon shown is the theme you would switch TO, which is the convention people
+   already have from every other site. */
+.theme-icon-dark { display: none; }
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .theme-icon-light { display: none; }
+    :root:not([data-theme="light"]) .theme-icon-dark { display: block; }
+}
+
+:root[data-theme="dark"] .theme-icon-light { display: none; }
+:root[data-theme="dark"] .theme-icon-dark { display: block; }
+:root[data-theme="light"] .theme-icon-light { display: block; }
+:root[data-theme="light"] .theme-icon-dark { display: none; }
+
+/* ------------------------------------------------------------------ *
+ * Signed-out shell
+ * ------------------------------------------------------------------ */
+
+.auth-shell {
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 24px; padding: 40px 20px;
+}
+
+.auth-shell-foot {
+    display: flex; align-items: center; gap: 14px;
+    font-size: 13px; color: var(--text-secondary);
+}
+
+.auth-card {
+    width: 100%; max-width: 420px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+    padding: 28px;
+}
+.auth-card-head { display: flex; flex-direction: column; gap: 5px; margin-bottom: 22px; }
+.auth-card-head h1 { font-size: 21px; font-weight: 700; letter-spacing: -.02em; }
+.auth-card-head p { font-size: 13.5px; color: var(--text-muted); }
+
+.auth-foot {
+    margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border);
+    display: flex; justify-content: center; gap: 6px;
+    font-size: 13px; color: var(--text-secondary);
+}
+
+/* The other way in — Google. Hidden until its module runs; see auth/partials. */
+.auth-alt { margin-top: 18px; display: flex; flex-direction: column; gap: 14px; }
+
+.auth-divider {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 12.5px; color: var(--text-muted);
+}
+.auth-divider::before, .auth-divider::after {
+    content: ""; flex: 1 1 auto; height: 1px; background: var(--border);
+}
+
+/* The Google mark keeps its own colours and must not be squeezed by the label. */
+.btn svg { flex: none; }
+
+/* ------------------------------------------------------------------ *
+ * Forms
+ * ------------------------------------------------------------------ */
+
+.form { display: flex; flex-direction: column; gap: 16px; }
+/* The `hidden` ATTRIBUTE beats any layout rule.
+   
+   The browser's own `[hidden] { display: none }` has the lowest possible specificity,
+   so a single class that sets `display` silently defeats it — `.form-field
+   { display: flex }` kept the shuttle's terminal field on screen for an airport that
+   has no terminals, with `hidden` set and doing nothing. Every `hidden` on this site
+   is a real "this is not on the page yet": the searchable dropdowns, the Google
+   button, the terminal field. This is the one place that has to win. */
+[hidden] { display: none !important; }
+
+.form-field { display: flex; flex-direction: column; gap: 6px; }
+
+.form-label {
+    font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-secondary);
+}
+
+.form-input, .form-select {
+    width: 100%; height: 40px; padding: 0 12px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-field);
+    background-color: var(--bg-card); color: var(--text-primary);
+    font-family: inherit; font-size: 14px;
+    outline: none; transition: .15s;
+}
+.form-input:focus, .form-select:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.form-input::placeholder { color: var(--text-muted); }
+.form-input:disabled { background-color: var(--bg-hover); color: var(--text-muted); }
+
+.form-input.is-invalid { border-color: var(--danger-border); background-color: var(--danger-bg); }
+/*
+ * A field's error message: red text under the field, and nothing else.
+ *
+ * It is a <ul> because a field can be wrong in more than one way at once, and a list is
+ * what that is — but a browser's default list is a disc and an indent, which read as
+ * "here are some notes" rather than "this is wrong". The marker and the padding come off
+ * so one message looks like a sentence and two look like two sentences.
+ *
+ * Shared by the server's messages and the browser's, so a field rejected before the form
+ * is sent and the same field rejected after look identical.
+ */
+.form-error {
+    list-style: none; margin: 0; padding: 0;
+    font-size: 12.5px; line-height: 1.45; color: var(--danger);
+}
+.form-help { font-size: 12.5px; color: var(--text-muted); }
+
+/* Native controls, coloured through accent-color — the one property that reaches
+   them. A border or radius here would be a rule that does nothing. */
+.form-check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; }
+.form-check input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); }
+
+/* ------------------------------------------------------------------ *
+ * Buttons
+ * ------------------------------------------------------------------ */
+
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 40px; padding: 0 18px;
+    border: 1px solid transparent; border-radius: var(--radius-field);
+    font-family: inherit; font-size: 14px; font-weight: 600;
+    cursor: pointer; transition: .15s; white-space: nowrap; text-decoration: none;
+}
+.btn:hover { text-decoration: none; }
+.btn:disabled { opacity: .6; cursor: default; }
+.btn.is-block { width: 100%; }
+
+.btn-primary { background: var(--accent); color: #FFF; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); color: #FFF; }
+
+.btn-secondary {
+    background: var(--bg-card); border-color: var(--border-strong); color: var(--text-primary);
+}
+.btn-secondary:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+
+.btn-danger { background: var(--danger); color: #FFF; }
+.btn-danger:hover:not(:disabled) { filter: brightness(.94); color: #FFF; }
+
+.btn-ghost { background: transparent; color: var(--text-secondary); }
+.btn-ghost:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+
+/* ------------------------------------------------------------------ *
+ * Alerts
+ * ------------------------------------------------------------------ */
+
+.alert {
+    display: flex; gap: 10px; padding: 11px 14px;
+    border: 1px solid transparent; border-radius: var(--radius-field);
+    font-size: 13.5px;
+}
+.alert-success { background: var(--success-bg); border-color: var(--success-border); color: var(--success); }
+.alert-error { background: var(--danger-bg); border-color: var(--danger-border); color: var(--danger); }
+
+/* ------------------------------------------------------------------ *
+ * Signed-in shell
+ * ------------------------------------------------------------------ */
+
+.site { min-height: 100vh; display: flex; flex-direction: column; }
+
+.site-header {
+    background: var(--bg-card); border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 20;
+}
+.site-header-inner {
+    max-width: 1120px; margin-inline: auto; padding: 12px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.site-nav { display: flex; align-items: center; gap: 4px; }
+.site-nav a {
+    padding: 7px 12px; border-radius: 8px;
+    color: var(--text-secondary); font-size: 13.5px; font-weight: 500;
+}
+.site-nav a:hover { background: var(--bg-hover); color: var(--text-primary); text-decoration: none; }
+.site-nav a.is-active { background: var(--text-primary); color: var(--bg-card); }
+
+.site-header-actions { display: flex; align-items: center; gap: 10px; }
+
+/*
+ * The menu is ONE piece of markup for both widths — laid out as a row on a wide screen,
+ * revealed by a checkbox on a narrow one.
+ *
+ * A checkbox and not a <details>: a browser hides the content of a closed <details>
+ * itself, and no `display` on a child overrides that, so the desktop header came out as
+ * a bare logo. This needs no JavaScript either.
+ */
+.site-header-inner { position: relative; }
+
+/* Off-screen rather than `display: none`, so the label is still operable from the
+   keyboard — a hidden input cannot be focused or toggled. */
+.site-menu-input {
+    position: absolute; width: 1px; height: 1px; margin: -1px;
+    padding: 0; border: 0; overflow: hidden; clip-path: inset(50%);
+}
+
+.site-menu-toggle {
+    display: none;
+    align-items: center; justify-content: center;
+    width: 36px; height: 36px;
+    border: 1px solid var(--border); border-radius: var(--radius-field);
+    color: var(--text-secondary); cursor: pointer;
+}
+.site-menu-toggle:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* The focus ring belongs on the label; the input it describes is off-screen. */
+.site-menu-input:focus-visible + .site-menu-toggle {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.site-menu-panel { display: flex; align-items: center; gap: 16px; margin-inline-start: auto; }
+
+@media (max-width: 720px) {
+    .site-menu-toggle { display: inline-flex; }
+
+    .site-menu-panel {
+        display: none;
+        position: absolute; inset-inline-end: 0; top: calc(100% + 10px);
+        z-index: 30; min-width: 240px;
+        flex-direction: column; align-items: stretch; gap: 10px;
+        margin: 0; padding: 14px;
+        background: var(--bg-card); border: 1px solid var(--border);
+        border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+    }
+
+    .site-menu-input:checked ~ .site-menu-panel { display: flex; }
+
+    .site-nav { flex-direction: column; align-items: stretch; gap: 2px; }
+    .site-nav a { padding: 9px 10px; font-size: 14px; }
+
+    .site-header-actions { flex-wrap: wrap; }
+    .site-header-actions .btn { flex: 1 1 auto; }
+}
+}
+
+.site-main { flex: 1 1 auto; }
+.page { max-width: 1120px; margin-inline: auto; padding: 28px 20px 48px; }
+.page-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 22px; }
+.page-title { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+.page-subtitle { font-size: 13.5px; color: var(--text-muted); }
+
+.site-footer {
+    border-top: 1px solid var(--border); background: var(--bg-card);
+    font-size: 13px; color: var(--text-secondary);
+}
+.site-footer-inner { max-width: 1120px; margin-inline: auto; padding: 40px 20px 24px; }
+
+.site-footer-top {
+    display: grid; grid-template-columns: 1.6fr 1fr 1.2fr; gap: 32px;
+    padding-bottom: 28px;
+}
+.site-footer-brand { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; }
+.site-footer-tagline { color: var(--text-muted); max-width: 40ch; }
+
+.site-footer-heading {
+    font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-primary); margin-bottom: 4px;
+}
+.site-footer-nav, .site-footer-contact { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+.site-footer-nav a, .site-footer-contact a { color: var(--text-secondary); }
+.site-footer-nav a:hover, .site-footer-contact a:hover { color: var(--accent); }
+.site-footer-address { font-style: normal; color: var(--text-muted); max-width: 34ch; }
+
+.site-footer-bottom {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    padding-top: 18px; border-top: 1px solid var(--border);
+    font-size: 12.5px; color: var(--text-muted);
+}
+
+.site-social { display: flex; align-items: center; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.site-social a {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 8px;
+    color: var(--text-secondary);
+}
+.site-social a:hover { background: var(--bg-hover); color: var(--accent); }
+/* A platform the panel gains before this file does still gets a real, labelled link. */
+.site-social-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+
+@media (max-width: 860px) {
+    .site-footer-top { grid-template-columns: 1fr 1fr; }
+    .site-footer-brand { grid-column: 1 / -1; }
+}
+
+@media (max-width: 520px) {
+    .site-footer-top { grid-template-columns: 1fr; gap: 26px; }
+}
+
+.card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-card); box-shadow: var(--shadow-card);
+}
+.card-body { padding: 22px; }
+.card-head { display: flex; flex-direction: column; gap: 4px; margin-bottom: 18px; }
+.card-title { font-size: 16px; font-weight: 700; }
+.card-subtitle { font-size: 13px; color: var(--text-muted); }
+
+/* A read-only value standing where an input would, so labels line up across a
+   form and a detail view. */
+.detail-value { min-height: 40px; display: flex; align-items: center; font-size: 14px; }
+
+.badge {
+    display: inline-flex; align-items: center; padding: 3px 9px;
+    border: 1px solid var(--border); border-radius: 999px;
+    background: var(--bg-subtle); font-size: 11.5px; font-weight: 600;
+    color: var(--text-secondary);
+}
+
+/* The account menu in the header. <details> so it works with no JavaScript. */
+.menu { position: relative; }
+.menu > summary {
+    list-style: none; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border: 1px solid var(--border); border-radius: 999px;
+    font-size: 13px; font-weight: 600;
+}
+.menu > summary::-webkit-details-marker { display: none; }
+.menu > summary:hover { background: var(--bg-hover); }
+.menu-panel {
+    position: absolute; inset-inline-end: 0; top: calc(100% + 6px); z-index: 30;
+    min-width: 200px; padding: 6px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-field); box-shadow: var(--shadow-card);
+    display: flex; flex-direction: column; gap: 2px;
+}
+.menu-panel a, .menu-panel button {
+    display: block; width: 100%; padding: 8px 10px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--text-primary);
+    font-family: inherit; font-size: 13.5px; text-align: start; cursor: pointer;
+}
+.menu-panel a:hover, .menu-panel button:hover { background: var(--bg-hover); text-decoration: none; }
+.menu-panel button.is-danger { color: var(--danger); }
+
+@media (max-width: 640px) {
+    .site-header-inner { flex-wrap: wrap; }
+    .page { padding-inline: 16px; }
+    .auth-card { padding: 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ------------------------------------------------------------------ *
+ * Landing page
+ * ------------------------------------------------------------------ */
+
+.hero { padding: 72px 20px 64px; background: var(--bg-card); border-bottom: 1px solid var(--border); }
+.hero-inner { max-width: 1120px; margin-inline: auto; display: flex; flex-direction: column; gap: 20px; align-items: flex-start; }
+
+/* A quiet label above the headline. Uppercase needs the letter-spacing back —
+   capitals set at body tracking read as a solid block. */
+.eyebrow {
+    font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--accent);
+}
+
+.hero-title {
+    font-size: clamp(32px, 5.5vw, 52px); font-weight: 800; letter-spacing: -.03em;
+    line-height: 1.05; max-width: 16ch;
+}
+/* ~60 characters: past that the eye loses the start of the next line. */
+.hero-lede { font-size: 16.5px; line-height: 1.6; color: var(--text-secondary); max-width: 56ch; }
+
+.section { padding: 64px 20px; }
+.section.is-alt { background: var(--bg-card); border-block: 1px solid var(--border); }
+.section-inner { max-width: 1120px; margin-inline: auto; display: flex; flex-direction: column; gap: 28px; }
+.section-head { display: flex; flex-direction: column; gap: 6px; }
+.section-title { font-size: 26px; font-weight: 700; letter-spacing: -.02em; }
+.section-lede { font-size: 15px; color: var(--text-secondary); max-width: 60ch; }
+
+.service-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+.service-card {
+    display: flex; flex-direction: column; gap: 14px; align-items: flex-start;
+    padding: 26px; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    /* The anchor target sits under a sticky header, so scroll stops short of it. */
+    scroll-margin-top: 80px;
+}
+.section.is-alt .service-card { background: var(--bg-page); }
+.service-name { font-size: 19px; font-weight: 700; letter-spacing: -.01em; }
+.service-lede { font-size: 14.5px; color: var(--text-secondary); }
+
+.service-points { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.service-points li { position: relative; padding-inline-start: 22px; font-size: 14px; color: var(--text-secondary); }
+/* A tick drawn in CSS rather than an emoji — an emoji is a different typeface at a
+   different size and never sits on the baseline. */
+.service-points li::before {
+    content: ''; position: absolute; inset-inline-start: 0; top: 7px;
+    width: 9px; height: 5px; border-inline-start: 2px solid var(--accent);
+    border-bottom: 2px solid var(--accent); transform: rotate(-45deg);
+}
+
+.steps { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.step { display: flex; gap: 14px; align-items: flex-start; }
+.step-n {
+    flex: 0 0 auto; width: 30px; height: 30px; display: grid; place-items: center;
+    border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+    font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.step-title { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+.step-text { font-size: 14px; color: var(--text-secondary); }
+
+.cta {
+    display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap;
+    padding: 30px; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: var(--radius-card);
+}
+
+@media (max-width: 860px) {
+    .service-grid, .steps { grid-template-columns: minmax(0, 1fr); }
+    .hero { padding: 52px 20px 44px; }
+    .section { padding: 48px 20px; }
+    /* The service links crowd the brand on a phone; the buttons on the right are
+       what a visitor actually needs. */
+    .site-header-inner .site-nav { display: none; }
+}
+
+/* ------------------------------------------------------------------ *
+ * Booking flow
+ * ------------------------------------------------------------------ */
+
+.booking-page { max-width: 760px; }
+.booking-page .card + .card,
+.booking-page .card + .alert,
+.booking-page .alert + .alert { margin-top: 16px; }
+.booking-actions { margin-top: 20px; }
+.booking-note { margin-top: 16px; font-size: 12.5px; color: var(--text-muted); text-align: center; }
+
+/* Two fields side by side on a laptop, stacked on a phone — the site is booked from
+   phones, so the stack is the default and the row is the enhancement. */
+.booking-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+@media (min-width: 560px) { .booking-grid { grid-template-columns: 1fr 1fr; } }
+
+/* Two grids stacked — airport and terminal, then city and drop point. The `gap` above
+   only separates cells INSIDE one grid, so without this the second row's labels sit
+   directly under the first row's controls and the four fields read as one block. Same
+   16px, so the vertical rhythm does not change at the seam. */
+.booking-grid + .booking-grid { margin-top: 16px; }
+
+.form-textarea { height: auto; padding: 10px 12px; line-height: 1.5; resize: vertical; }
+
+/* Where the customer is, and how much is left. */
+.steps-bar {
+    display: flex; flex-wrap: wrap; gap: 8px 18px;
+    margin: 0 0 22px; padding: 0; list-style: none;
+    font-size: 12.5px; color: var(--text-muted);
+}
+.steps-bar-item { display: flex; align-items: center; gap: 8px; }
+.steps-bar-item a { display: flex; align-items: center; gap: 8px; color: inherit; }
+.steps-bar-item a:hover { color: var(--text-primary); text-decoration: none; }
+.steps-bar-number {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; flex: none; border-radius: 50%;
+    border: 1px solid var(--border-strong); font-weight: 600; font-size: 11.5px;
+}
+.steps-bar-item.is-current { color: var(--text-primary); font-weight: 600; }
+.steps-bar-item.is-current .steps-bar-number { background: var(--accent); border-color: var(--accent); color: #FFF; }
+.steps-bar-item.is-done .steps-bar-number { background: var(--bg-hover); color: var(--text-secondary); }
+
+/* Choosing a vehicle or a route. The whole card is the label, so the tap target is the
+   card and not a 16px radio — this is a phone-first flow. */
+.vehicle-list, .rate-list { display: flex; flex-direction: column; gap: 12px; }
+
+.vehicle-card, .rate-card {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 16px; cursor: pointer;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius-card); transition: .15s;
+}
+.vehicle-card:hover, .rate-card:hover { border-color: var(--border-strong); background: var(--bg-hover); }
+.vehicle-card.is-chosen, .rate-card.is-chosen { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.vehicle-card input, .rate-card input { margin: 3px 0 0; width: 18px; height: 18px; flex: none; accent-color: var(--accent); }
+
+.vehicle-card-body, .rate-card-body { display: flex; flex-direction: column; gap: 4px; flex: 1 1 auto; }
+.vehicle-card-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.vehicle-name, .rate-name { font-size: 15.5px; font-weight: 700; color: var(--text-primary); }
+.vehicle-seats { font-size: 12.5px; color: var(--text-muted); }
+.vehicle-price, .rate-fare { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+.vehicle-breakdown, .rate-note { font-size: 12.5px; color: var(--text-muted); }
+.vehicle-note { font-size: 12.5px; color: var(--accent); }
+
+.direction-switch { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.direction-switch .btn { flex: 1 1 200px; }
+
+/* Quick picks for the shuttle time. Buttons that FILL the field — the field itself
+   always accepts any time, which is the client's rule. */
+.time-picks { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.time-picks-label { font-size: 12.5px; color: var(--text-muted); }
+.time-pick {
+    padding: 5px 11px; border-radius: 999px;
+    border: 1px solid var(--border-strong); background: var(--bg-card);
+    color: var(--text-secondary); font-family: inherit; font-size: 12.5px; font-weight: 600;
+    cursor: pointer;
+}
+.time-pick:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--accent); }
+
+/* The review. A description list, because that is what it is. */
+.review-list { margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.review-list > div { display: flex; justify-content: space-between; gap: 20px; align-items: baseline; }
+.review-list dt { font-size: 13px; color: var(--text-muted); flex: none; }
+.review-list dd { margin: 0; text-align: end; color: var(--text-primary); }
+.review-total { padding-top: 12px; border-top: 1px solid var(--border); }
+.review-total dt, .review-total dd { font-size: 16px; font-weight: 700; color: var(--text-primary); }
+
+/* A statement of fact, not a failure — softer than the error tone. */
+.alert-notice { background: var(--bg-subtle); border-color: var(--border-strong); color: var(--text-secondary); }
+
+/* ------------------------------------------------------------------ *
+ * Address fields and the map picker
+ * ------------------------------------------------------------------ */
+
+/* The box and its pin sit on one line; the box takes whatever is left. */
+.address-row { display: flex; align-items: center; gap: 8px; }
+.address-row .form-input { flex: 1 1 auto; min-width: 0; }
+
+.address-pin, .address-remove, .address-add {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; flex: none;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-field);
+    background: var(--bg-card); color: var(--text-secondary);
+    font-family: inherit; font-size: 14px; cursor: pointer; transition: .15s;
+}
+.address-pin:hover, .address-remove:hover, .address-add:hover { background: var(--bg-hover); color: var(--text-primary); border-color: var(--accent); }
+/* The + is a glyph, not an icon, so it needs a size of its own to match the pin's weight. */
+.address-add { font-size: 20px; line-height: 1; }
+.address-remove:hover { color: var(--danger); border-color: var(--danger-border); }
+
+/*
+ * A one-tap clear, INSIDE the field, the way the mobile app has it.
+ *
+ * Inside rather than another 40px button beside the pin, for two reasons: a stop row
+ * already carries a ✕ that removes the whole stop, and two ✕ buttons side by side that
+ * do different things is a trap. This one belongs to the text.
+ *
+ * Logical properties throughout — `inset-inline-end`, `padding-inline-end` — so the
+ * button sits on the correct side once Arabic is enabled in the panel and the page
+ * flips to RTL.
+ */
+.field-clearable { position: relative; display: flex; align-items: center; flex: 1 1 auto; min-width: 0; }
+.field-clearable .form-input { width: 100%; }
+.form-input.is-clearable { padding-inline-end: 38px; }
+
+.field-clear {
+    position: absolute; inset-inline-end: 6px;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0;
+    border: 0; border-radius: 50%;
+    background: transparent; color: var(--text-secondary);
+    font-family: inherit; font-size: 13px; line-height: 1; cursor: pointer; transition: .15s;
+}
+.field-clear:hover { background: var(--bg-hover); color: var(--text-primary); }
+
+/* An address with coordinates behind it, marked so the difference between "typed" and
+   "picked" is visible — only a picked one can be measured or driven to. */
+.form-input.has-point { border-color: var(--success-border); background: var(--success-bg); }
+
+/* Reordering the itinerary. Stacked arrows so the pair takes one field's height
+   rather than pushing the address box narrower on a phone. */
+.stop-move { display: inline-flex; flex-direction: column; gap: 2px; flex: none; }
+
+/*
+ * ── The reorder arrows are HIDDEN, "for now" (client, 2026-09-08) ────────────
+ *
+ * This one line is the whole change: DELETE IT to bring them back. The buttons, their
+ * click handlers and `renumber()`'s enable/disable logic are all still in place and
+ * still covered, so nothing else has to be remembered or rebuilt.
+ *
+ * It has to be CSS rather than the markup: `renumber()` sets `.hidden` on this element
+ * from the row count, so a `hidden` attribute in the Blade file would be switched
+ * straight back on by the script the moment a second stop appears.
+ */
+.stop-move { display: none !important; }
+.stop-move-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 19px; padding: 0;
+    border: 1px solid var(--border-strong); border-radius: 6px;
+    background: var(--bg-card); color: var(--text-secondary); cursor: pointer;
+}
+.stop-move-btn:hover:not(:disabled) { background: var(--bg-hover); color: var(--accent); border-color: var(--accent); }
+.stop-move-btn:disabled { opacity: .35; cursor: default; }
+
+.stop-list { display: flex; flex-direction: column; gap: 10px; }
+.stop-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.stop-row .address-row { flex: 1 1 auto; min-width: 0; }
+/*
+ * A stop's message belongs UNDER its row, not beside it. The row is a flex line, so an
+ * appended message became another column and sat to the right of the address — which is
+ * where the pin and the remove button are, and it pushed them off.
+ *
+ * Indented past the number badge, so it lines up with the field it is about.
+ */
+.stop-row > .form-error { flex: 1 0 100%; margin-block-start: -4px; margin-inline-start: 34px; }
+.stop-number {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; flex: none; border-radius: 50%;
+    background: var(--bg-hover); color: var(--text-secondary);
+    font-size: 12px; font-weight: 700;
+}
+
+.btn-sm { height: 34px; padding: 0 12px; font-size: 13px; }
+
+.review-stops { margin: 0; padding-inline-start: 18px; display: flex; flex-direction: column; gap: 2px; }
+
+/* The picker dialog. Its own backdrop rather than the overlay itself, so a click on the
+   dialog cannot bubble out and close it mid-edit. */
+/* ── THE PICKER MUST NEVER BE TALLER THAN THE SCREEN ─────────────────────────
+
+   On a phone the map picker ran off the bottom and its buttons could not be reached:
+   the dialog had no height limit, `overflow: hidden` clipped whatever did not fit,
+   and `place-items: center` put the overflow half above and half below the viewport —
+   where a centred grid item cannot be scrolled to. The customer could see the map and
+   the coordinates and had no way to press "Use this location".
+   Client's report, 2026-09-02.
+
+   Three things fix it together: the overlay stops centring when there is no room, the
+   dialog is capped to the viewport, and the BODY scrolls while the header and footer
+   stay put — so the buttons are on screen whatever the content does. */
+.modal-overlay {
+    position: fixed; inset: 0; z-index: 50;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px; overflow-y: auto;
+    background: rgba(28, 25, 23, .55);
+}
+.modal-overlay.hidden { display: none !important; }
+.lp-backdrop { position: absolute; inset: 0; }
+
+.modal {
+    position: relative; width: 100%; max-width: 560px;
+    /* `vh` first as the fallback, then `dvh`: a phone browser's address bar shrinks the
+       visible area as you scroll, and `100vh` is the height WITHOUT it — which is how a
+       footer ends up under the browser chrome. */
+    max-height: calc(100vh - 40px);
+    max-height: calc(100dvh - 40px);
+    display: flex; flex-direction: column;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, .2);
+    overflow: hidden;
+}
+.modal.is-widest { max-width: 760px; }
+
+/* The header and the footer hold their size; only the middle gives. */
+.modal-header { flex: none; padding: 16px 20px; border-bottom: 1px solid var(--border); }
+.modal-body {
+    flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    padding: 20px; display: flex; flex-direction: column; gap: 12px;
+}
+.modal-footer {
+    flex: none;
+    padding: 16px 20px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: flex-end; gap: 12px;
+}
+
+.lp-map { height: 320px; width: 100%; border-radius: 12px; background: var(--bg-hover); }
+
+@media (max-width: 640px) {
+    /* Less border. The map KEEPS its 320px here — it was cut to 220 only because the
+       latitude and longitude boxes were below it, and those are gone (2026-09-08). The
+       map is the thing a customer is actually aiming a pin with, so it gets the space
+       back now there is space to give. */
+    .modal-overlay { padding: 10px; }
+
+    /* Full width, so a customer's thumb is not aiming at half a button. */
+    .modal-footer { flex-direction: column-reverse; align-items: stretch; }
+    .modal-footer .btn { width: 100%; }
+}
+
+/* The geocoder fallback list, shown only when the Places typeahead is unavailable. */
+.lp-results {
+    margin: 0; padding: 6px; list-style: none;
+    max-height: 180px; overflow-y: auto;
+    border: 1px solid var(--border); border-radius: var(--radius-field);
+}
+.lp-results.hidden { display: none; }
+.lp-results li { padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13.5px; }
+.lp-results li:hover { background: var(--bg-hover); }
+
+/* Google's typeahead renders into a container appended to <body>, so it needs to clear
+   the dialog — and it is drawn by Google, so only the layer is ours to set. */
+.pac-container { z-index: 60; }
+
+/* A vehicle that is booked on the customer's dates: shown, not hidden, but plainly
+   unavailable. `pointer-events` off so the whole card stops behaving like a choice. */
+.vehicle-card.is-taken {
+    opacity: .55; cursor: default; pointer-events: none;
+    background: var(--bg-subtle); border-style: dashed;
+}
+.vehicle-note.is-taken { color: var(--danger); }
+
+.booking-done-mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 52px; height: 52px; border-radius: 50%;
+    background: var(--success-bg); color: var(--success);
+    border: 1px solid var(--success-border);
+}
+
+/* ------------------------------------------------------------------
+ * Day calendar (public/js/day-calendar.js, public/js/charter-calendar.js)
+ *
+ * The month grid the booking wizard picks its dates on. Ported from the admin
+ * panel's calendar deliberately: the operator taking a booking over the phone and
+ * the customer taking it themselves should be reading the same month, with the
+ * same colours meaning the same things. The panel's tokens are mapped onto this
+ * site's palette — green is `--success`, amber `--warning`, red `--danger` — so
+ * dark mode comes out of the existing variables rather than a second set.
+ *
+ * `.daycal-*` matches the panel's class names so a fix can be carried across.
+ * ------------------------------------------------------------------ */
+
+.daycal { display: flex; flex-direction: column; gap: 10px; }
+
+.daycal-head {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+}
+.daycal-month { font-size: 14px; font-weight: 700; letter-spacing: .01em; }
+.daycal-nav {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px; padding: 0;
+    border: 1px solid var(--border); border-radius: 8px;
+    background: var(--bg-card); color: var(--text-secondary);
+    cursor: pointer; transition: .15s;
+}
+.daycal-nav:hover { border-color: var(--border-strong); background: var(--bg-hover); color: var(--text-primary); }
+
+/* The arrow points the way the month runs. In Arabic that is the other way, and a
+   "previous" chevron aimed at next month is worse than no chevron at all. */
+[dir="rtl"] .daycal-nav svg { transform: scaleX(-1); }
+
+/* The weekday strip and the day grid are two grids with the SAME template, so a
+   column heading sits over its column whatever the month's lead-in is. */
+.daycal-week, .daycal-grid {
+    display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px;
+}
+.daycal-dow {
+    text-align: center; font-size: 11px; font-weight: 700;
+    color: var(--text-muted); text-transform: uppercase;
+}
+
+.daycal-cell {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2px; min-height: 56px; padding: 6px 4px;
+    border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-card); color: var(--text-primary);
+    font-family: inherit; cursor: pointer; transition: .15s;
+}
+.daycal-cell:hover:not(:disabled) { border-color: var(--border-strong); background: var(--bg-hover); }
+.daycal-cell:disabled { cursor: not-allowed; }
+.daycal-dom { font-size: 15px; font-weight: 700; line-height: 1.1; }
+.daycal-note {
+    font-size: 9.5px; font-weight: 600; line-height: 1.2;
+    text-align: center; overflow: hidden;
+}
+
+/* A lead-in day from the previous month: it holds the column, and nothing else. */
+.daycal-cell.is-empty { border: 0; background: none; cursor: default; min-height: 0; }
+
+/* Nothing is known about this day yet. Deliberately NOT green: "we have not
+   looked" must not read as "there is room". */
+.daycal-cell.is-blank { background: var(--bg-card); }
+
+.daycal-cell.is-available {
+    border-color: var(--success-border); background: var(--success-bg); color: var(--success);
+}
+.daycal-cell.is-limited {
+    border-color: var(--warning-border); background: var(--warning-bg); color: var(--warning);
+}
+.daycal-cell.is-full {
+    border-color: var(--danger-border); background: var(--danger-bg); color: var(--danger);
+}
+
+/* Not a day that can be asked about — before the lead time, past the booking
+   window, or earlier than the start date on a return grid. Grey rather than red:
+   it is an absence, not a sell-out, and the two need different answers. */
+.daycal-cell.is-closed,
+.daycal-cell.is-past {
+    border-color: var(--border); background: var(--bg-subtle); color: var(--text-muted);
+}
+
+/* Today is marked even when it carries a count, so the month has an anchor. */
+.daycal-cell.is-today { border-color: var(--accent); }
+
+/* The chosen day wins over every state colour — it is the one thing the customer
+   is looking for when they come back to the field. */
+.daycal-cell.is-selected {
+    border-color: var(--accent); background: var(--accent); color: #FFF;
+}
+.daycal-cell.is-selected .daycal-note { color: #FFF; opacity: .85; }
+
+.daycal-legend {
+    display: flex; flex-wrap: wrap; gap: 6px 16px;
+    padding-top: 8px; border-top: 1px solid var(--border);
+}
+.daycal-key {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--text-secondary);
+}
+.daycal-swatch {
+    width: 10px; height: 10px; border-radius: 3px;
+    border: 1px solid var(--border); background: var(--bg-card);
+}
+.daycal-swatch.is-available { border-color: var(--success-border); background: var(--success-bg); }
+.daycal-swatch.is-limited { border-color: var(--warning-border); background: var(--warning-bg); }
+.daycal-swatch.is-full { border-color: var(--danger-border); background: var(--danger-bg); }
+.daycal-swatch.is-closed { border-color: var(--border); background: var(--bg-subtle); }
+
+/* The mount is empty and hidden until the script fills it; the native date field
+   above it is what a customer without JavaScript uses. */
+.daycal-mount { margin-top: 4px; }
+
+/* On a phone the two months stack, and 56px cells across seven columns is already
+   the narrowest a two-digit date and its note will sit in. */
+@media (max-width: 480px) {
+    .daycal-week, .daycal-grid { gap: 4px; }
+    .daycal-cell { min-height: 48px; padding: 4px 2px; border-radius: 8px; }
+    .daycal-dom { font-size: 13px; }
+    .daycal-note { font-size: 9px; }
+}
+
+/* ------------------------------------------------------------------
+ * The charter wizard, rebuilt 2026-08-26
+ *
+ * Follows the mobile app's charter screens: labelled sections down one
+ * column, the trip type as two buttons, and a running estimate pinned at the
+ * bottom of the form the way the app pins it to the bottom of the phone.
+ * ------------------------------------------------------------------ */
+
+/* A section heading INSIDE a card — "Vehicle", "Schedule", "Your details".
+   Small and accented, as the app sets them, so the eye finds the groups
+   without the page turning into a stack of h2s competing with the title. */
+.form-section {
+    margin: 0 0 14px;
+    font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent);
+}
+.form-section:not(:first-child) { margin-top: 24px; }
+
+.form-help.is-accent { color: var(--accent); font-weight: 600; }
+
+/* ---- Trip type: two buttons that are really radios ---------------- */
+
+.choice-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.choice {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 52px; padding: 12px 16px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-field);
+    background: var(--bg-card); color: var(--text-primary);
+    font-weight: 700; cursor: pointer; transition: .15s;
+}
+.choice:hover { background: var(--bg-hover); }
+
+/* The radio itself is off-screen rather than `display: none`, which would take
+   it out of the tab order and off every screen reader. */
+.choice input {
+    position: absolute; width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0);
+}
+.choice:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.choice.is-chosen,
+.choice:has(input:checked) {
+    border-color: var(--accent); background: var(--accent); color: #FFF;
+}
+.choice-mark { font-size: 15px; line-height: 1; }
+
+/* ---- The running estimate ----------------------------------------- */
+
+.estimate-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    margin-top: 18px; padding: 16px 20px;
+    border: 1px solid var(--border); border-radius: var(--radius-card);
+    background: var(--bg-subtle);
+}
+.estimate-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.estimate-label { font-size: 13px; color: var(--text-secondary); }
+.estimate-note { font-size: 12px; color: var(--text-muted); }
+.estimate-value {
+    font-size: 22px; font-weight: 800; color: var(--accent);
+    white-space: nowrap; text-align: end;
+}
+
+/* ---- Step 3: the summary ------------------------------------------ */
+
+.summary-title {
+    margin: 0 0 14px;
+    font-size: 15px; font-weight: 800; color: var(--accent);
+}
+.summary-hint { color: var(--text-muted); font-size: 12px; }
+
+.summary-total {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.summary-total strong { font-size: 20px; color: var(--accent); }
+
+/* ---- Step 4: the booking is with us -------------------------------- */
+
+.done-mark {
+    display: flex; align-items: center; justify-content: center;
+    width: 76px; height: 76px; margin: 8px auto 20px;
+    border-radius: 50%; background: var(--accent); color: #FFF;
+    box-shadow: 0 0 0 12px var(--accent-soft);
+}
+
+.page-head.is-centred { align-items: center; text-align: center; }
+
+.done-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-bottom: 14px;
+}
+.done-service { font-weight: 800; color: var(--accent); }
+
+/* Amber, and it says `pending` — the same word the panel shows an operator, so
+   a customer reading it out is describing what the operator can see. */
+.status-pill {
+    padding: 4px 12px; border-radius: 999px;
+    border: 1px solid var(--warning-border); background: var(--warning-bg);
+    color: var(--warning); font-size: 12px; font-weight: 700;
+}
+
+.done-reference {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.done-reference-label { font-size: 13px; color: var(--text-secondary); }
+.done-reference-value {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 20px; font-weight: 700; letter-spacing: .12em;
+    color: var(--text-primary);
+}
+
+/* WhatsApp's own green, not the site's palette: it is the one button on the
+   site that belongs to somebody else's brand, and a customer looks for it. */
+.btn-whatsapp {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    width: 100%; padding: 14px 20px;
+    border: 1px solid #1DA851; border-radius: var(--radius-field);
+    background: #25D366; color: #0B3D1F;
+    font-weight: 800; text-decoration: none;
+}
+.btn-whatsapp:hover { background: #1DA851; color: #FFF; }
+
+/* ---- The chosen range on the month grid ---------------------------- */
+
+/* The days BETWEEN the two ends of a return trip, and its far end. Softer than
+   the selected day: one cell is where the field's value is, the rest are the
+   trip it implies. */
+.daycal-cell.is-marked {
+    border-color: var(--accent); background: var(--accent-soft); color: var(--accent);
+}
+.daycal-cell.is-marked .daycal-note { color: var(--accent); }
+
+@media (max-width: 560px) {
+    .estimate-bar { flex-direction: column; align-items: stretch; gap: 8px; }
+    .estimate-value { text-align: start; }
+    .choice-row { grid-template-columns: 1fr; }
+}
+
+/* ------------------------------------------------------------------
+ * Searchable dropdown (public/js/searchable-select.js)
+ *
+ * Ported from the admin panel, mapped onto this site's tokens and sized to
+ * match `.form-input` rather than the panel's denser fields — this one is used
+ * on a phone, by a customer, not by an operator at a desk.
+ *
+ * The panel is `position: fixed` when open (see placeDropdown in the script),
+ * because the booking form has scrolling and overflow-hidden ancestors and an
+ * absolutely positioned panel was clipped by both.
+ * ------------------------------------------------------------------ */
+
+.ss { position: relative; }
+
+/* The same height and type size as `.form-input` / `.form-select`, deliberately: a
+   searchable dropdown sits in a row beside plain fields, and one control six pixels
+   taller than its neighbours is the kind of thing that reads as broken without
+   anyone being able to say why. */
+.ss-toggle {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: 100%; height: 40px; padding: 0 12px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-field);
+    background: var(--bg-card); color: var(--text-primary);
+    font-family: inherit; font-size: 14px; text-align: start; cursor: pointer;
+    transition: .15s;
+}
+.ss-toggle:hover:not(:disabled) { border-color: var(--accent); }
+.ss-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ss-toggle:disabled { background: var(--bg-hover); color: var(--text-muted); cursor: default; }
+
+.ss-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Nothing chosen yet: the placeholder must read as a prompt, not as a value. */
+.ss-label.is-placeholder { color: var(--text-muted); }
+.ss-chevron { flex: 0 0 auto; color: var(--text-muted); }
+
+.ss-panel {
+    z-index: 80; display: flex; flex-direction: column;
+    /* The cap is load-bearing: `.ss-list` asks to scroll, but a flex column with
+       no ceiling has nothing to scroll inside, and a long fleet would render a
+       panel running off the bottom of the document. */
+    max-height: 300px;
+    background: var(--bg-card); border: 1px solid var(--border-strong);
+    border-radius: var(--radius-field); box-shadow: var(--shadow-card);
+    overflow: hidden;
+}
+.ss-panel.hidden { display: none; }
+
+.ss-search { padding: 8px; border-bottom: 1px solid var(--border); flex: 0 0 auto; }
+.ss-search .form-input { height: 36px; }
+
+.ss-list { list-style: none; margin: 0; padding: 4px; overflow-y: auto; flex: 1 1 auto; }
+.ss-option {
+    display: flex; align-items: center; gap: 8px; width: 100%;
+    padding: 10px 12px; border: 0; border-radius: 8px;
+    background: transparent; color: var(--text-primary);
+    font-family: inherit; font-size: 14px; text-align: start; cursor: pointer;
+}
+.ss-option:hover { background: var(--bg-hover); }
+.ss-option.is-current { background: var(--accent-soft); color: var(--text-primary); font-weight: 600; }
+/* Stacked, not side by side.
+
+   The name and the fare shared one row until 2026-09-02, so the fare took whatever
+   width it needed and the stop name was truncated into "Ngawi (Pond…" on a phone —
+   the fare is a detail and the name is the choice, and the row gave the space to the
+   wrong one. Two lines cost a little height and nothing else: `align-items` is
+   `flex-start` so the row does not centre a two-line block against the tick. */
+.ss-option { align-items: flex-start; flex-wrap: wrap; }
+.ss-option-name { flex: 1 1 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ss-option-note { flex: 1 1 100%; margin-top: 2px; font-size: 12px; color: var(--text-muted); }
+.ss-empty { padding: 14px 12px; font-size: 13px; color: var(--text-muted); text-align: center; }
+
+/* ------------------------------------------------------------------
+ * Field-level validation messages (public/js/form-validate.js)
+ * ------------------------------------------------------------------ */
+
+/* The field the customer has to go back to. Coloured, not just annotated: the
+   message can be below the fold on a phone, and the border is what is visible
+   when the page scrolls to it. */
+.form-field.is-invalid .form-input,
+.form-field.is-invalid .form-select,
+.form-field.is-invalid .ss-toggle {
+    border-color: var(--danger);
+}
+.form-field.is-invalid .form-input:focus,
+.form-field.is-invalid .form-select:focus { outline-color: var(--danger); }
+
+/* A van already booked on the chosen dates: shown, greyed, and unpickable. */
+.ss-option:disabled { opacity: .55; cursor: not-allowed; }
+.ss-option:disabled:hover { background: transparent; }
+
+/* ------------------------------------------------------------------
+ * The signed-in customer's menu (partials/account-menu.blade.php)
+ *
+ * No JavaScript: a checkbox holds the open state, a full-screen label
+ * closes it. Same approach as the site menu beside it, for the same reason.
+ * ------------------------------------------------------------------ */
+
+.account { position: relative; }
+
+/* Focusable but invisible, so the menu opens from the keyboard. `display: none`
+   would take it out of the tab order entirely. */
+.account-input {
+    position: absolute; width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0);
+}
+
+.account-toggle {
+    display: inline-flex; align-items: center; gap: 8px;
+    max-width: 220px; padding: 6px 10px 6px 6px;
+    border: 1px solid var(--border-strong); border-radius: 999px;
+    background: var(--bg-card); color: var(--text-primary);
+    font-size: 14px; font-weight: 600; cursor: pointer; transition: .15s;
+}
+.account-toggle:hover { border-color: var(--accent); background: var(--bg-hover); }
+.account-input:focus-visible + .account-scrim + .account-toggle {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+}
+
+.account-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; flex: none; border-radius: 50%;
+    background: var(--accent); color: #FFF;
+    font-size: 13px; font-weight: 800; line-height: 1;
+}
+.account-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-chevron { flex: none; color: var(--text-muted); transition: transform .15s; }
+.account-input:checked ~ .account-toggle .account-chevron { transform: rotate(180deg); }
+
+/* Only in the layout while the menu is open, so it never sits over the page. */
+.account-scrim { display: none; position: fixed; inset: 0; z-index: 70; }
+.account-input:checked + .account-scrim { display: block; }
+
+.account-panel {
+    display: none; position: absolute; z-index: 71;
+    inset-inline-end: 0; top: calc(100% + 8px); min-width: 240px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-card);
+    background: var(--bg-card); box-shadow: var(--shadow-card); overflow: hidden;
+}
+.account-input:checked ~ .account-panel { display: block; }
+
+.account-who {
+    display: flex; flex-direction: column; gap: 2px;
+    padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--bg-subtle);
+}
+.account-who-name { font-weight: 700; font-size: 14px; }
+/* Wraps rather than truncating: an address the customer cannot read in full does not
+   answer the question they opened the menu to ask. */
+.account-who-email { font-size: 12.5px; color: var(--text-secondary); overflow-wrap: anywhere; }
+
+.account-links { display: flex; flex-direction: column; padding: 6px; }
+.account-links a,
+.account-signout-btn {
+    display: block; width: 100%; padding: 10px 12px;
+    border: 0; border-radius: 8px;
+    background: transparent; color: var(--text-primary);
+    font-family: inherit; font-size: 14px; text-align: start; text-decoration: none;
+    cursor: pointer;
+}
+.account-links a:hover { background: var(--bg-hover); }
+
+.account-signout { padding: 6px; border-top: 1px solid var(--border); }
+.account-signout-btn { color: var(--danger); font-weight: 600; }
+.account-signout-btn:hover { background: var(--danger-bg); }
+
+/* On a phone the header menu is already a stacked panel, so the account menu is part
+   of that flow rather than a dropdown floating over it. */
+@media (max-width: 820px) {
+    .account { width: 100%; }
+    .account-toggle { max-width: none; width: 100%; justify-content: flex-start; }
+    .account-panel { position: static; min-width: 0; margin-top: 8px; box-shadow: none; }
+    .account-scrim { display: none !important; }
+}
+
+/* ------------------------------------------------------------------
+ * My bookings (booking/history.blade.php)
+ * ------------------------------------------------------------------ */
+
+.booking-list { display: flex; flex-direction: column; gap: 16px; }
+
+/* Where a booking has got to, in the panel's own vocabulary. Amber while it waits
+   for an operator, green once accepted, grey when it is over or called off. */
+.status-pill.is-confirmed {
+    border-color: var(--success-border); background: var(--success-bg); color: var(--success);
+}
+.status-pill.is-completed,
+.status-pill.is-cancelled {
+    border-color: var(--border); background: var(--bg-subtle); color: var(--text-muted);
+}
+
+/* The unpaid panel. Set apart from the booking above it, because it is an
+   instruction rather than a description — the client asked for it here after a
+   customer paid nothing, having lost the account number with the screen it was on. */
+.pay-pending {
+    margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 12px;
+}
+.pay-lead { margin: 0; font-weight: 700; color: var(--warning); }
+.pay-block { display: flex; flex-direction: column; gap: 8px; }
+.pay-title {
+    margin: 0;
+    font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--accent);
+}
+
+/* ------------------------------------------------------------------
+ * Phone number with a country code (public/js/country-select.js)
+ *
+ * Ported from the admin panel, sized to this site's fields rather than the
+ * panel's denser ones. Logical properties throughout: this control is on a
+ * booking form that renders RTL in Arabic.
+ * ------------------------------------------------------------------ */
+
+.picker-wrap { position: relative; }
+
+.phone-field { display: flex; align-items: stretch; width: 100%; }
+
+/*
+ * The dial button, joined to the number field.
+ *
+ * `align-self: stretch` rather than a matching height: the two halves must be exactly
+ * the same height or the seam between them shows, and copying `.form-input`'s height in
+ * a second place is a number that will eventually differ from it.
+ */
+.phone-field .dial {
+    display: inline-flex; align-items: center; gap: 8px; flex: 0 0 auto;
+    align-self: stretch; padding: 0 12px;
+    border: 1px solid var(--border-strong); border-inline-end: 0;
+    border-start-start-radius: var(--radius-field);
+    border-end-start-radius: var(--radius-field);
+    border-start-end-radius: 0; border-end-end-radius: 0;
+    background: var(--bg-subtle); color: var(--text-primary);
+    font-family: inherit; font-size: 15px; font-variant-numeric: tabular-nums;
+    line-height: 1; cursor: pointer; transition: .15s; white-space: nowrap;
+}
+.phone-field .dial:hover { border-color: var(--accent); background: var(--bg-hover); }
+.phone-field .dial:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* The flag holds its own row so the image cannot stretch the button, and the dial
+   code sits at a fixed minimum so the field does not jump between +1 and +358. */
+.phone-field .dial .row { display: inline-flex; align-items: center; flex: 0 0 auto; }
+.phone-field [data-picker-dial] { min-width: 34px; text-align: start; }
+.phone-field .ss-chevron { margin-inline-start: 2px; }
+
+/* The number takes the rest of the row and gives up its leading corners to the
+   button it is joined to. */
+.phone-field .form-input {
+    flex: 1 1 auto; min-width: 0;
+    border-start-start-radius: 0; border-end-start-radius: 0;
+}
+/* A focused number must not lose the seam it shares with the dial button:
+   `.form-input` only recolours its OWN border, which on a joined control leaves the
+   shared edge grey and reads as a crack down the middle of one field. */
+.phone-field .form-input:focus { position: relative; z-index: 1; }
+.phone-field:focus-within .dial { border-color: var(--accent); }
+
+/*
+ * A flag is a picture of a fixed shape. Without the explicit height and `object-fit`
+ * a 120px-wide PNG lands at its natural size and drags the row it is in out of shape —
+ * which is what made the dial button taller than the number beside it.
+ */
+.ss-flag {
+    display: block; flex: 0 0 auto;
+    width: 22px; height: 16px;
+    border-radius: 3px; object-fit: cover;
+    border: 1px solid var(--border);
+}
+
+/* The country panel positions itself the same way the searchable select does — see
+   dropdown-position.js for why it is fixed rather than absolute. */
+.ss-panel.is-anchored { position: fixed; }
+.ss-panel.hidden { display: none; }
+
+/* ------------------------------------------------------------------
+ * Shuttle departures (booking/shuttle/trip.blade.php)
+ *
+ * One card per RUN. The time is what the customer reads; the seats beside it
+ * are what decides whether they can take it.
+ * ------------------------------------------------------------------ */
+
+.run-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+
+.run {
+    display: block; padding: 14px 16px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-field);
+    background: var(--bg-card); cursor: pointer; transition: .15s;
+}
+.run:hover { border-color: var(--accent); background: var(--bg-hover); }
+
+/* Off-screen rather than `display: none`, which would take it out of the tab
+   order and off every screen reader. */
+.run input {
+    position: absolute; width: 1px; height: 1px;
+    margin: -1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0);
+}
+.run:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.run.is-chosen,
+.run:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+
+.run-body { display: flex; flex-direction: column; gap: 2px; }
+.run-time { font-size: 17px; font-weight: 800; color: var(--text-primary); }
+.run-seats { font-size: 12.5px; color: var(--text-secondary); }
+
+/* A full departure is SHOWN, greyed and unpickable — a customer who can see the
+   16:00 is full takes the 20:00, while one who never sees it wonders whether the
+   bus exists at all. */
+.run.is-full { opacity: .55; cursor: not-allowed; }
+.run.is-full:hover { border-color: var(--border-strong); background: var(--bg-card); }
+.run.is-full .run-seats { color: var(--danger); }
+
+/* Called off by the operator. Unbookable like a full run, but muted rather than red:
+   red is the colour of "someone beat you to it", and this bus is simply not going. */
+.run.is-cancelled { opacity: .55; cursor: not-allowed; }
+.run.is-cancelled:hover { border-color: var(--border-strong); background: var(--bg-card); }
+.run.is-cancelled .run-time { text-decoration: line-through; }
+.run.is-cancelled .run-seats { color: var(--text-muted); }
+
+/* ------------------------------------------------------------------
+ * The direction chooser (booking/shuttle/route.blade.php)
+ *
+ * Two cards rather than two words: which way you are going is the first and
+ * largest decision on the screen, and it changes everything below it.
+ * ------------------------------------------------------------------ */
+
+.segmented { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.segment {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px;
+    border: 1px solid var(--border-strong); border-radius: var(--radius-field);
+    background: var(--bg-card); color: var(--text-primary);
+    text-decoration: none; transition: .15s;
+}
+.segment:hover { border-color: var(--accent); background: var(--bg-hover); }
+
+.segment-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 38px; height: 38px; flex: none; border-radius: 50%;
+    background: var(--bg-subtle); color: var(--text-secondary);
+}
+.segment-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.segment-label { font-weight: 700; }
+.segment-note { font-size: 12.5px; color: var(--text-muted); }
+
+.segment.is-chosen { border-color: var(--accent); background: var(--accent); color: #FFF; }
+/* Font Awesome sizes itself from the font, not from an SVG's width attribute, so the
+   glyph is given an explicit size here — otherwise it inherits the segment's body text
+   and sits noticeably small inside the 38px circle. */
+.segment-icon .fa-solid { font-size: 16px; line-height: 1; }
+
+.segment.is-chosen .segment-icon { background: rgba(255, 255, 255, .22); color: #FFF; }
+.segment.is-chosen .segment-note { color: rgba(255, 255, 255, .85); }
+
+@media (max-width: 560px) {
+    .segmented { grid-template-columns: 1fr; }
+}
+
+/* A dropdown waiting on an earlier choice. Muted and unclickable, with its
+   placeholder saying what it is waiting for — an enabled control that opens onto
+   an empty list reads as a fault, a disabled one reads as a queue. */
+.ss-toggle:disabled { background: var(--bg-hover); color: var(--text-muted); cursor: not-allowed; }
+.ss-toggle:disabled .ss-chevron { opacity: .4; }
+
+/* Continue, with the reason it is closed sitting beside it. */
+.continue-group {
+    display: flex; align-items: center; gap: 14px;
+    flex-wrap: wrap; justify-content: flex-end;
+}
+.continue-note {
+    margin: 0; max-width: 34ch;
+    font-size: 12.5px; line-height: 1.45; color: var(--danger); text-align: end;
+}
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+
+@media (max-width: 560px) {
+    .continue-group { width: 100%; justify-content: stretch; flex-direction: column-reverse; align-items: stretch; }
+    .continue-note { text-align: start; max-width: none; }
+}
+
+/* ── CMS pages ───────────────────────────────────────────────────────────────
+
+   A page written in the panel's rich-text editor. The admin gets headings, lists,
+   links and paragraphs, and nothing else is assumed: the rules below are element
+   selectors under `.cms-body`, because the editor's markup carries no classes of
+   ours and never will.
+
+   Narrower than the rest of the site on purpose. `.page` is 1120px because it holds
+   forms and grids; this holds running prose, and a line of text past about 70
+   characters is measurably harder to read back to the start of. */
+.cms-page { padding: 28px 20px 56px; }
+.cms-page-inner { max-width: 72ch; margin-inline: auto; }
+
+.cms-page-head { margin-bottom: 28px; }
+.cms-page-title { margin: 0; font-size: 34px; line-height: 1.15; letter-spacing: -0.02em; }
+.cms-page-lede {
+    margin: 12px 0 0; max-width: 60ch;
+    font-size: 16.5px; line-height: 1.6; color: var(--text-muted);
+}
+
+/* The body. Spacing is set on the TOP of each block and reset on the first child, so
+   the admin can start a page with a heading or a paragraph and neither one leaves a
+   gap above itself. */
+.cms-body { font-size: 16px; line-height: 1.7; }
+.cms-body > :first-child { margin-top: 0; }
+.cms-body > :last-child { margin-bottom: 0; }
+
+.cms-body h2 { margin: 36px 0 0; font-size: 23px; line-height: 1.25; letter-spacing: -0.01em; }
+.cms-body h3 { margin: 28px 0 0; font-size: 18.5px; line-height: 1.3; }
+.cms-body h4 { margin: 24px 0 0; font-size: 16px; }
+.cms-body p { margin: 14px 0 0; }
+
+.cms-body ul, .cms-body ol { margin: 14px 0 0; padding-inline-start: 22px; }
+.cms-body li { margin-top: 6px; }
+.cms-body li > ul, .cms-body li > ol { margin-top: 6px; }
+
+.cms-body a { color: var(--accent); text-underline-offset: 3px; }
+.cms-body a:hover { text-decoration-thickness: 2px; }
+
+.cms-body img { max-width: 100%; height: auto; border-radius: 10px; margin-top: 20px; }
+.cms-body hr { margin: 32px 0 0; border: 0; border-top: 1px solid var(--border); }
+
+.cms-body blockquote {
+    margin: 20px 0 0; padding: 2px 0 2px 16px;
+    border-inline-start: 3px solid var(--border-strong); color: var(--text-muted);
+}
+
+/* Editors paste tables, and a wide one must scroll inside itself rather than pushing
+   the whole page sideways on a phone. */
+.cms-body table { width: 100%; margin-top: 20px; border-collapse: collapse; font-size: 15px; }
+.cms-body th, .cms-body td { padding: 9px 12px; border: 1px solid var(--border); text-align: start; }
+.cms-body th { background: var(--bg-subtle); font-weight: 600; }
+
+.cms-body pre {
+    margin: 20px 0 0; padding: 14px 16px; overflow-x: auto;
+    background: var(--bg-subtle); border: 1px solid var(--border); border-radius: 10px;
+}
+
+/* An embed the admin pasted — a map on a Contact page, most likely. */
+.cms-body iframe { max-width: 100%; margin-top: 20px; border: 0; border-radius: 10px; }
+
+@media (max-width: 560px) {
+    .cms-page-title { font-size: 27px; }
+    .cms-body h2 { font-size: 20px; }
+}
+
+/* ── The discount code ───────────────────────────────────────────────────────
+
+   Sits under the price on both review steps. The client's report was that nobody
+   could find where to enter a code, so it is a visible block with its own border
+   rather than a link that opens something. */
+.coupon {
+    margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--border);
+    display: flex; flex-direction: column; gap: 12px;
+}
+.coupon-form { display: flex; flex-direction: column; gap: 6px; }
+
+/* The box and its button on one line, and the button never shrinks — a "Use"
+   squeezed to three characters is what happens when both are allowed to flex. */
+.coupon-row { display: flex; gap: 8px; align-items: stretch; }
+.coupon-row .form-input { flex: 1 1 auto; min-width: 0; text-transform: uppercase; }
+.coupon-row .btn { flex: 0 0 auto; }
+
+/* The arithmetic, so a customer can see the code worked rather than trust it. */
+.coupon-total { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.coupon-total > div { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.coupon-total dt { color: var(--text-secondary); font-size: 14px; }
+.coupon-total dd { margin: 0; font-variant-numeric: tabular-nums; }
+.coupon-total .is-discount { color: var(--success, #166534); }
+
+.coupon-payable {
+    padding-top: 8px; border-top: 1px solid var(--border);
+    font-size: 16px;
+}
+
+/* The code itself, quoted back in the discount row. */
+.coupon-code {
+    display: inline-block; padding: 1px 6px; border-radius: 5px;
+    background: var(--bg-subtle); border: 1px solid var(--border);
+    font-family: 'SFMono-Regular', Consolas, monospace; font-size: 12px;
+    letter-spacing: .4px; color: var(--text-primary);
+}
+
+/* "Code applied" — the one message on this screen that is good news. */
+.form-help.is-good { color: var(--success, #166534); }
+
+@media (max-width: 480px) {
+    /* A thumb needs the whole width for both. */
+    .coupon-row { flex-direction: column; }
+    .coupon-row .btn { width: 100%; }
+}
+
+/* The discount, inside a booking's own detail list on the confirmation screen and in
+   My bookings. `.coupon-total` is the review step's version; these rows live in a
+   `.review-list`, which already lays a label and a value out across the row. */
+.review-list .is-discount { color: var(--success); }
+.review-list .is-strong { font-weight: 700; }
