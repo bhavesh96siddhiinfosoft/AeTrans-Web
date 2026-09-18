@@ -2,6 +2,8 @@
 
 namespace App\Services\Site;
 
+use App\Support\LocaleText;
+
 use App\Services\Firebase\Firestore;
 use Illuminate\Support\Facades\Cache;
 
@@ -81,23 +83,18 @@ class Catalog
     /**
      * A `name` from the panel, in the reader's language.
      *
-     * `services.name` is a LOCALE MAP on documents written by the current panel
-     * (`{"en": "Rental With Driver", "id": "…"}`) and a plain string on older ones, so
-     * both are read here rather than assumed away.
+     * The rule moved to `App\Support\LocaleText` when `cms_pages` started storing
+     * locale maps too — three services were about to read the same two shapes. This
+     * stays as the way the rest of the site asks, because `$catalog->localised(...)`
+     * is what every caller already says.
      *
-     * The order — this locale, then any language the panel has — is deliberate. A name
-     * the admin typed in one language only must still show up everywhere, because the
-     * point of naming a service in the panel is that renaming it there changes the
-     * website. A caller that wants the site's own translated wording instead supplies it
-     * as a fallback for the empty case; see `SiteServices`.
+     * One behaviour changed in the move: a language stored EMPTY now falls back like a
+     * language that is absent, instead of rendering blank. That is what the paragraph
+     * this replaced always said it did.
      */
     public function localised(mixed $name): string
     {
-        if (is_array($name)) {
-            $name = $name[app()->getLocale()] ?? collect($name)->first(fn ($value) => trim((string) $value) !== '');
-        }
-
-        return trim((string) $name);
+        return LocaleText::pick($name);
     }
 
     // ---- Charter --------------------------------------------------------------

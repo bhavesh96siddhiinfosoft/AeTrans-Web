@@ -3,6 +3,7 @@
 namespace App\Services\Site;
 
 use App\Services\Firebase\Firestore;
+use App\Support\LocaleText;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -14,14 +15,12 @@ use Illuminate\Support\Facades\Cache;
  *
  * ── THE FIELDS, READ OFF THE LIVE DATA ──────────────────────────────────────
  *
- *   name              the heading, and the menu label
+ *   name              the heading and the menu label — a LOCALE MAP
  *   slug              the admin's handle for the page
  *   path              WHAT THE URL IS — `about-us`, and nested pages would be `a/b`
- *   description       the body: rich-text HTML from the panel's editor
- *   excerpt           one-line summary; used as a meta description fallback
+ *   description       the body: rich-text HTML from the panel's editor — a LOCALE MAP
+ *   excerpt           one-line summary, meta description fallback — a LOCALE MAP
  *   status/publish    both must say published before a visitor sees it
- *   locale            `en` on both live documents today
- *   translationGroup  ties one page's languages together
  *   menuOrder         where it sits in the footer
  *   parentId          nesting; null on both live documents
  *   featuredImage     used for Open Graph when the page's own SEO gives no image
@@ -40,12 +39,23 @@ use Illuminate\Support\Facades\Cache;
  *
  * ── LANGUAGES ───────────────────────────────────────────────────────────────
  *
- * One URL per page in every language, like the rest of this site
- * (`SetLocale`, the client's decision of 2026-08-20). So a path resolves to a
- * TRANSLATION GROUP, and the document served is the one in the reader's language —
- * every sibling's path reaching the same page in whichever language is being read.
- * Only `en` exists today; the day the admin adds an `id` version it appears on its own,
- * with no code change.
+ * ONE PAGE IS ONE DOCUMENT, and the words inside it are LOCALE MAPS:
+ * `{"en": "About Us", "id": "Tentang Kami"}`. The client's decision of 2026-09-18,
+ * and the shape `services.name` and the banner copy have used all along — which is
+ * why `App\Support\LocaleText` reads all three.
+ *
+ * So one page has ONE URL, and switching language swaps the words at that address
+ * rather than moving the reader. A language the admin has not written falls back to
+ * one that has words, because a missing translation should show the original rather
+ * than a blank page — and a blank page is what an empty heading would be.
+ *
+ * Everything leaves this class ALREADY IN THE READER'S LANGUAGE. The views take a
+ * page and print it; none of them knows a locale map exists, and none of them should
+ * have to.
+ *
+ * (Briefly, in September 2026, each language was its own document tied by a
+ * `translationGroup`. Both fields are ignored here now, and the panel removes them
+ * from a document the first time it is saved.)
  */
 class CmsPages
 {
@@ -94,36 +104,29 @@ class CmsPages
         }
 
         /*
-         * The address named a page; the reader's language decides which document
-         * answers. A visitor reading in Indonesian who follows an English link to
+         * The address named the page; the reader's language decides which WORDS come
+         * back. A visitor reading in Indonesian who follows an English link to
          * `/about-us` gets the Indonesian text at that same address, because the site
          * has one URL per page and the language lives in a cookie.
          */
-        return $this->inLocale($match, $locale ?? app()->getLocale());
+        return $this->localise($match, $locale ?? app()->getLocale());
     }
 
     /**
      * The published pages for the footer menu, in the admin's own order.
      *
-     * One entry per translation group, each already resolved to the reader's language,
-     * so a page never appears twice under two names.
+     * One entry per page, already in the reader's language.
      *
      * @return array<int, array<string, mixed>>
      */
     public function menu(?string $locale = null): array
     {
         $locale ??= app()->getLocale();
-        $chosen = [];
 
-        foreach ($this->published() as $page) {
-            $group = $this->groupOf($page);
-
-            if (! isset($chosen[$group])) {
-                $chosen[$group] = $this->inLocale($page, $locale);
-            }
-        }
-
-        $menu = array_values($chosen);
+        $menu = array_map(
+            fn (array $page) => $this->localise($page, $locale),
+            $this->published(),
+        );
 
         usort($menu, function (array $a, array $b) {
             // `menuOrder` first, then the name, so two pages the admin left at 0 come
@@ -136,11 +139,15 @@ class CmsPages
     }
 
     /**
-     * One page's SEO block, with the empty strings the panel writes treated as absent.
+     * One page's SEO block.
+     *
+     * Already in the reader's language: the page came through `localise()`, which
+     * flattens the words inside `seo` along with the rest. `partials/seo.blade.php`
+     * therefore reads plain strings and never learns that a locale map exists.
      *
      * The panel saves every field whether or not it was filled in, so `title: ""` means
-     * "not set" and not "an empty title". Handing that straight to the `<head>` would
-     * blank out the site defaults the page is supposed to fall back to.
+     * "not set" and not "an empty title" — which is why that partial treats an empty
+     * string as absent and falls through to the site default.
      *
      * @param  array<string, mixed>  $page
      * @return array<string, mixed>
@@ -168,47 +175,56 @@ class CmsPages
     }
 
     /**
-     * The sibling of a page written in one language, or the page itself.
+     * One page with its words resolved to the reader's language.
      *
-     * Falling back to the document that was asked for is deliberate: a site with an
-     * English About page and no Indonesian one should show the English text to an
-     * Indonesian reader, not a 404. A missing translation is a gap in the content, and
-     * hiding the page hides the gap from everybody including the admin.
+     * The ONE place a locale map becomes a string, so every view downstream — the page
+     * itself, the footer link, the `<head>` — prints what it is given.
+     *
+     * A language the admin has not written falls back to one that has words rather
+     * than coming back empty. That is deliberate: a site with an English About page
+     * and no Indonesian one should show the English text to an Indonesian reader, not
+     * a blank heading over an empty body. The gap stays visible to visitors and to the
+     * admin, which is how it gets filled.
      *
      * @param  array<string, mixed>  $page
      * @return array<string, mixed>
      */
-    private function inLocale(array $page, string $locale): array
+    private function localise(array $page, string $locale): array
     {
-        if ((string) ($page['locale'] ?? '') === $locale) {
-            return $page;
+        foreach (['name', 'excerpt', 'description'] as $field) {
+            $page[$field] = LocaleText::pick($page[$field] ?? '', $locale);
         }
 
-        $group = $this->groupOf($page);
+        $seo = $page['seo'] ?? [];
 
-        foreach ($this->published() as $sibling) {
-            if ($this->groupOf($sibling) === $group && (string) ($sibling['locale'] ?? '') === $locale) {
-                return $sibling;
+        if (is_array($seo)) {
+            foreach (['title', 'metaDescription', 'focusKeyphrase', 'keywords', 'breadcrumbTitle'] as $field) {
+                if (array_key_exists($field, $seo)) {
+                    $seo[$field] = LocaleText::pick($seo[$field], $locale);
+                }
             }
+
+            /*
+             * The social block, one level down. `image` and `type` are not words and
+             * are left exactly as they are — running a URL through the picker would
+             * work by accident today and mangle it the day somebody stores a map.
+             */
+            foreach (['openGraph', 'twitter'] as $block) {
+                if (! is_array($seo[$block] ?? null)) {
+                    continue;
+                }
+
+                foreach (['title', 'description', 'imageAlt'] as $field) {
+                    if (array_key_exists($field, $seo[$block])) {
+                        $seo[$block][$field] = LocaleText::pick($seo[$block][$field], $locale);
+                    }
+                }
+            }
+
+            $page['seo'] = $seo;
         }
 
         return $page;
-    }
-
-    /**
-     * What ties a page's languages together.
-     *
-     * `translationGroup` when the panel wrote one, and the document id when it did not —
-     * never a shared empty string, which would make every untranslated page one group
-     * and collapse the whole menu to a single entry.
-     *
-     * @param  array<string, mixed>  $page
-     */
-    private function groupOf(array $page): string
-    {
-        $group = trim((string) ($page['translationGroup'] ?? ''));
-
-        return $group !== '' ? $group : (string) ($page['id'] ?? spl_object_hash((object) $page));
     }
 
     /** Leading and trailing slashes off, so `/about-us/` and `about-us` are one page. */

@@ -19,7 +19,15 @@ class CmsPageTest extends TestCase
 {
     use FakesFirebase, RefreshDatabase;
 
-    /** The two pages that exist in the client's live Firestore today. */
+    /**
+     * The two pages that exist in the client's live Firestore today.
+     *
+     * PLAIN STRINGS, not locale maps — which is what they really hold until the panel's
+     * migration is run, and the reason every test here doubles as a check that the old
+     * shape still reads. `locale` and `translationGroup` are left on them deliberately:
+     * they are ignored now, and a test that removed them would not notice if they
+     * started being read again.
+     */
     private function pages(array $extra = []): array
     {
         return array_merge([
@@ -234,29 +242,51 @@ class CmsPageTest extends TestCase
         $this->get('/about-us')->assertOk()->assertDontSee('name="robots"', false);
     }
 
+    /** Both enabled languages, as the panel's Localisation screen holds them. */
+    private function languages(): array
+    {
+        return [
+            'en-doc' => ['code' => 'en', 'name' => 'English', 'enable' => true, 'isDefault' => true, 'isRtl' => false],
+            'id-doc' => ['code' => 'id', 'name' => 'Bahasa Indonesia', 'enable' => true, 'isDefault' => false, 'isRtl' => false],
+        ];
+    }
+
+    /** One page, written in both languages the way the panel now stores it. */
+    private function bilingualPage(array $overrides = []): array
+    {
+        return array_merge([
+            'id' => 'page-about',
+            'name' => ['en' => 'About Us', 'id' => 'Tentang Kami'],
+            'slug' => 'about-us',
+            'path' => 'about-us',
+            'description' => [
+                'en' => '<p>Charter cars with drivers.</p>',
+                'id' => '<p>Sewa mobil dengan sopir.</p>',
+            ],
+            'excerpt' => ['en' => 'Who we are.', 'id' => 'Tentang kami.'],
+            'status' => 'publish',
+            'publish' => true,
+            'menuOrder' => 1,
+            'seo' => [
+                'title' => ['en' => 'About Aetranse', 'id' => 'Tentang Aetranse'],
+                'metaDescription' => ['en' => 'Own fleet, fixed fares.'],
+            ],
+        ], $overrides);
+    }
+
     /**
-     * One URL per page, in every language.
+     * ONE URL, and the language swaps the words at it.
      *
-     * The site's whole convention: the address never changes and the language lives in
-     * a cookie ([[aetranse-locale-in-cookie]]). So a reader in Indonesian following an
-     * English link gets the Indonesian text at the English address, and the Indonesian
-     * document's own path reaches the same page.
+     * The site's convention: the address never changes and the language lives in a
+     * cookie ([[aetranse-locale-in-cookie]]). Since 2026-09-18 a page is ONE document
+     * holding `{en: …, id: …}` maps, so this is the whole of it — no second document,
+     * no second address.
      */
     public function test_a_page_is_served_in_the_readers_language(): void
     {
         $this->fakeCatalog([
-            'cms_pages' => $this->pages([
-                'page-about-id' => [
-                    'id' => 'page-about-id', 'name' => 'Tentang Kami', 'slug' => 'tentang-kami',
-                    'path' => 'tentang-kami', 'description' => '<p>Sewa mobil dengan sopir.</p>',
-                    'status' => 'publish', 'publish' => true, 'locale' => 'id',
-                    'translationGroup' => 'about-us', 'menuOrder' => 1, 'seo' => [],
-                ],
-            ]),
-            'languages' => [
-                'en-doc' => ['code' => 'en', 'name' => 'English', 'enable' => true, 'isDefault' => true, 'isRtl' => false],
-                'id-doc' => ['code' => 'id', 'name' => 'Bahasa Indonesia', 'enable' => true, 'isDefault' => false, 'isRtl' => false],
-            ],
+            'cms_pages' => ['page-about' => $this->bilingualPage()],
+            'languages' => $this->languages(),
         ]);
 
         /*
@@ -271,11 +301,126 @@ class CmsPageTest extends TestCase
          */
         $this->withUnencryptedCookie(SetLocale::COOKIE, 'id');
 
-        $this->get('/about-us')->assertOk()->assertSee('Sewa mobil dengan sopir.', false);
-        $this->get('/tentang-kami')->assertOk()->assertSee('Sewa mobil dengan sopir.', false);
+        $this->get('/about-us')
+            ->assertOk()
+            ->assertSee('Sewa mobil dengan sopir.', false)
+            ->assertSee('Tentang Kami')
+            ->assertDontSee('Charter cars with drivers.', false);
 
-        // And the menu lists the page ONCE, under the name the reader can read.
+        // The footer names it once, in a language the reader can read.
         $this->get('/')->assertOk()->assertSee('Tentang Kami')->assertDontSee('About Us');
+    }
+
+    /** The same document, same address, read by somebody in English. */
+    public function test_the_same_address_answers_in_english(): void
+    {
+        $this->fakeCatalog([
+            'cms_pages' => ['page-about' => $this->bilingualPage()],
+            'languages' => $this->languages(),
+        ]);
+
+        $this->get('/about-us')
+            ->assertOk()
+            ->assertSee('Charter cars with drivers.', false)
+            ->assertDontSee('Sewa mobil dengan sopir.', false);
+    }
+
+    /**
+     * A language the admin has not written falls back to one that has words.
+     *
+     * A blank heading over an empty body is worse than the wrong language, and it
+     * hides the gap from the admin as well as the reader.
+     */
+    public function test_a_language_with_nothing_written_falls_back(): void
+    {
+        $this->fakeCatalog([
+            'cms_pages' => ['page-about' => $this->bilingualPage([
+                // Written in English only, which is every live page today.
+                'name' => ['en' => 'About Us'],
+                'description' => ['en' => '<p>Charter cars with drivers.</p>'],
+            ])],
+            'languages' => $this->languages(),
+        ]);
+
+        $this->withUnencryptedCookie(SetLocale::COOKIE, 'id');
+
+        $this->get('/about-us')
+            ->assertOk()
+            ->assertSee('About Us')
+            ->assertSee('Charter cars with drivers.', false);
+    }
+
+    /**
+     * An EMPTY language falls back the same way an absent one does.
+     *
+     * The panel leaves a language out rather than writing it empty, but documents
+     * written before it did are still out there — and `""` reaching a heading is a
+     * blank page, not a translation.
+     */
+    public function test_an_empty_translation_is_treated_as_absent(): void
+    {
+        $this->fakeCatalog([
+            'cms_pages' => ['page-about' => $this->bilingualPage([
+                'name' => ['en' => 'About Us', 'id' => ''],
+                'description' => ['en' => '<p>Charter cars with drivers.</p>', 'id' => ''],
+            ])],
+            'languages' => $this->languages(),
+        ]);
+
+        $this->withUnencryptedCookie(SetLocale::COOKIE, 'id');
+
+        $this->get('/about-us')
+            ->assertOk()
+            ->assertSee('About Us')
+            ->assertSee('Charter cars with drivers.', false);
+    }
+
+    /**
+     * The `<head>` too. `seo.title` is a map now, and a `<title>` printing "Array"
+     * is the kind of thing that reaches production because nobody reads the source of
+     * a page that looks fine.
+     */
+    public function test_the_head_is_written_in_the_readers_language(): void
+    {
+        $this->fakeCatalog([
+            'cms_pages' => ['page-about' => $this->bilingualPage()],
+            'languages' => $this->languages(),
+        ]);
+
+        $this->withUnencryptedCookie(SetLocale::COOKIE, 'id');
+
+        $html = $this->get('/about-us')->assertOk()->getContent();
+
+        $this->assertStringContainsString('<title>Tentang Aetranse</title>', $html);
+        $this->assertStringNotContainsString('Array', $html);
+
+        // Not translated, so it falls back rather than emptying the description.
+        $this->assertStringContainsString('Own fleet, fixed fares.', $html);
+    }
+
+    /**
+     * Two documents that were once the two halves of one page are now two PAGES.
+     *
+     * Said out loud because it is the migration's whole job: until it merges them,
+     * an Indonesian sibling left over from the old model is a separate page at its own
+     * address, and that is the correct reading of what is stored.
+     */
+    public function test_a_leftover_sibling_is_its_own_page(): void
+    {
+        $this->fakeCatalog([
+            'cms_pages' => $this->pages([
+                'page-about-id' => [
+                    'id' => 'page-about-id', 'name' => 'Tentang Kami', 'slug' => 'tentang-kami',
+                    'path' => 'tentang-kami', 'description' => '<p>Sewa mobil dengan sopir.</p>',
+                    'status' => 'publish', 'publish' => true, 'locale' => 'id',
+                    'translationGroup' => 'about-us', 'menuOrder' => 1, 'seo' => [],
+                ],
+            ]),
+            'languages' => $this->languages(),
+        ]);
+
+        $this->get('/about-us')->assertOk()->assertSee('Charter cars and airport shuttles.', false);
+        $this->get('/tentang-kami')->assertOk()->assertSee('Sewa mobil dengan sopir.', false);
     }
 
     /**
